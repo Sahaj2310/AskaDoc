@@ -1,0 +1,147 @@
+@font-face {
+    font-family: 'MikeSansFree';
+    src: url('../assets/fonts/MikeSansFree-MVDLP.ttf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'comfortaa_light';
+    src: url('../assets/fonts/comfortaa.light.ttf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;500&display=swap');
+
+body {
+    --h1: #F2F2F2;
+    --bg: #182628;
+    --h3: #3B945e;
+    --st: #57BA98;
+    --h2: #65CCB8;
+}
+.ChatSectionContainer{
+    height: 866px;
+    width: 63%;
+}
+.titleChat{
+    display: flex;
+    gap: 2%;
+    margin-top: 25px;
+    margin-left: 2%;
+}
+.chatIcon{
+    width: 10%;
+}
+.chatTitleText{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-size: 30px;
+    padding-top: 30px;
+    color: var(--bg);
+}
+.SLIContainer{
+    display: flex;
+    margin: 3%;
+    gap: 2%;
+    border-radius: 18px;
+}
+.SLIContainer:hover{
+    background-color: var(--h2);
+}
+.ChatuserImage{
+    width: 8%;
+}
+.ChatUsername{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    font-size: 25px;
+    padding-top: 16px;
+    color: var(--bg);
+}
+.senderInfo{
+    display: flex;
+    padding: 1%;
+    gap: 2%;
+    border-bottom: 1px solid var(--bg);
+}
+.senderDP{
+    width: 10%;
+    height: 90px;
+    border-radius: 45px;
+}
+.senderUsername{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-size: 25px;
+    padding-top: 30px;
+    color: var(--bg);
+}
+.MessageContainer{
+    height: 75%;
+    padding: 10px;
+    border-bottom: 1px solid var(--bg);
+    overflow: auto;
+}
+.MessageForm{
+    display: flex;
+    gap: 1%;
+    justify-content: center;
+    height: 40px;
+    margin-top: 20px;
+}
+.MessageInput{
+    width: 60%;
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    font-size: 25px;
+    padding-left: 10px;
+}
+.SenderMO{
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 5px;
+}
+.SenderUsername{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--bg);
+}
+.SenderContent{
+    padding: 10px;
+    border-radius: 15px;
+    width: fit-content;
+    max-width: 40%;
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    background-color:#d7d7d7;
+    color: var(--bg);
+}
+.UserMO{
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    gap: 7px;
+    margin: 5px;
+}
+.UserUsername{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--bg);
+}
+.Usercontent{
+    padding: 10px;
+    border-radius: 15px;
+    width: fit-content;
+    max-width: 40%;
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    background-color: var(--h3);
+    color: var(--h1);
+}

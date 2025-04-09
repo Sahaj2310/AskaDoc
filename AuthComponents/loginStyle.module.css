@@ -1,0 +1,91 @@
+@font-face {
+    font-family: 'NT_Josefine';
+    src: url('../assets/fonts/NT_Josefine.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;500&display=swap');
+a{
+    color: var(--h3);
+    text-decoration: none;
+}
+body {
+    background-color: var(--bg) !important;
+}
+
+.container {
+    display: flex;
+    justify-content: space-around;
+    height: 700px;
+}
+.LoginContainer {
+    margin: 20px;
+    background-color: var(--h1);
+    width: 35%;
+    height: 88%;
+    border-radius: 35px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
+@media screen and (max-width: 980px) {
+    .container{
+        flex-direction: column;
+        align-items: center;
+    }
+    .LoginContainer{
+        width: 75%;
+    }
+}
+.loginForm{
+    margin: 0 15% 0 15%;
+}
+.loginTitle{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-size: 50px;
+    color: var(--bg);
+    padding-left: 35px;
+}
+.checkUser{
+    display: flex;
+    justify-content: space-around;
+}
+.PatCheck, .DocCheck{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.patCheckBox{
+    width: 10px;
+    height: 10px;
+    border: 1px solid black;
+    border-radius: 10px;
+}
+.formField{
+    margin: 50px 0 25px 0;
+}
+.formFieldTitle{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+}
+.InputField{
+    border: none;
+    border-bottom: 1px solid var(--bg);
+    background-color: var(--h1);
+    width: 100%;
+    height: 40px;
+    font-family: 'Ubuntu', sans-serif;
+    font-size: 30px;
+    font-weight: 300;
+}
+.submitBtn{
+    width: 100px;
+    height: 40px;
+}
+.signinOption{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    text-align: center;
+}
