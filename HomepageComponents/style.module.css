@@ -1,0 +1,180 @@
+@font-face {
+    font-family: 'MikeSansFree';
+    src: url('../assets/fonts/MikeSansFree-MVDLP.ttf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'comfortaa_light';
+    src: url('../assets/fonts/comfortaa.light.ttf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;500&display=swap');
+
+body {
+    --h1: #F2F2F2;
+    --bg: #182628;
+    --h3: #3B945e;
+    --st: #57BA98;
+    --h2: #65CCB8;
+    background-color: var(--bg);
+    margin: 0px;
+}
+li{
+    width: 100%;
+}
+
+.catTitle {
+    text-align: center;
+    font-family: MikeSansFree;
+    font-size: 45px;
+    letter-spacing: 4px;
+    margin-top: 30px;
+    margin-bottom: 50px;
+    color: var(--h2);
+}
+
+.cardContainer {
+    background-color: var(--h1);
+    width: 288px;
+    height: 400px;
+    margin: 35px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: 0.5s;
+}
+.cardContainer:hover{
+    transition: 0.5s;
+    transform: scale(1.1);
+    cursor: pointer;
+}
+
+.cardImg {
+    width: 100%;
+    height: 70%;
+    overflow: hidden;
+}
+
+.cardTitle {
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    color: var(--bg);
+    font-size: 30px;
+    padding-left: 5%;
+}
+
+.cardInfo {
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    color: var(--st);
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    line-height: 20px;
+    padding-left: 5%;
+    padding-right: 5%;
+    padding-bottom: 25px;
+}
+.container1{
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+}
+.renderlist{
+    padding-left: 3%;
+    padding-right: 3%;
+    list-style-type: none !important;
+}
+.categorylistitem{
+    width: 100%;
+    height: fit-content;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    background-color: var(--h1);
+    display: flex;
+    justify-content: space-between;
+    animation-name: listAnimation;
+    animation-duration: 0.5s;
+    transition: 0.5s;
+}
+.categorylistitem:hover{
+    background-color: #d0d0d0;
+    transition: 0.3s;
+    transform: scale(1.03);
+    cursor: pointer;
+}
+.profileimg{
+    width: 50px;
+    height: 50px;
+    overflow: hidden;
+    border-radius: 25px;
+}
+.profilenamespec{
+    display: flex;
+    gap: 20px;
+    width: 220px;
+}
+@media screen and (max-width: 400px){
+    .profile-name-spec{
+        display: block;
+    }
+}
+.name{
+    color: var(--bg);
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+}
+.spec{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    color: var(--st);
+    font-size: 13px;
+    margin-top: 5px;
+}
+.fees{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    color: var(--bg);
+    font-size: 19px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+.rep{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    color: var(--h3);
+    font-size: 19px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+.sortsec{
+    margin-left: 3%;
+    display: flex;
+    align-items: center;
+}
+.sorttitle{
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    color: var(--h1);
+    font-size: 30px;
+}
+.sortselect{
+    margin-left: 1%;
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+}
+@keyframes listAnimation {
+    from{
+        /* transform: ; */
+        opacity: 0;
+    }
+    to{
+        /* transform: scale(1); */
+        opacity: 1;
+    }
+}
