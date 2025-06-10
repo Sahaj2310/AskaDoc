@@ -135,19 +135,28 @@ function Chat() {
   return (
     <Container maxWidth="md" sx={{ mt: { xs: 6, md: 8 }, mb: { xs: 6, md: 8 } }}>
       <Paper elevation={6} sx={{ height: '80vh', display: 'flex', flexDirection: 'column', borderRadius: 3, bgcolor: 'background.paper' }}>
-        <Box sx={{ p: 2, bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText, borderTopLeftRadius: 12, borderTopRightRadius: 12, display: 'flex', alignItems: 'center' }}>
-          <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2, width: 40, height: 40 }}>{otherUser.username[0].toUpperCase()}</Avatar>
+        <Box sx={{ 
+          p: 2, 
+          bgcolor: theme.palette.primary.main, 
+          color: theme.palette.primary.contrastText, 
+          borderTopLeftRadius: 12, 
+          borderTopRightRadius: 12, 
+          display: 'flex', 
+          alignItems: 'center',
+          boxShadow: theme.shadows[3]
+        }}>
+          <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2, width: 48, height: 48 }}>{otherUser.username[0].toUpperCase()}</Avatar>
           <Box>
-            <Typography variant="h6" sx={{ color: theme.palette.primary.contrastText }}>
+            <Typography variant="h6" sx={{ color: theme.palette.primary.contrastText, fontWeight: 600 }}>
               {otherUser.profile?.name || otherUser.username}
             </Typography>
             {user.role === 'doctor' && (
-              <Typography variant="body2" sx={{ color: theme.palette.primary.contrastText }}>
+              <Typography variant="body2" sx={{ color: theme.palette.primary.contrastText, opacity: 0.9 }}>
                 Patient: {otherUser.username}
               </Typography>
             )}
             {otherUser.profile?.specialization && user.role === 'patient' && (
-              <Typography variant="body2" sx={{ color: theme.palette.primary.contrastText }}>
+              <Typography variant="body2" sx={{ color: theme.palette.primary.contrastText, opacity: 0.9 }}>
                 {otherUser.profile.specialization}
               </Typography>
             )}
@@ -155,45 +164,57 @@ function Chat() {
         </Box>
 
         <List sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: 'background.default', scrollBehavior: 'smooth' }}>
-          {messages.map((msg, index) => (
-            <ListItem
-              key={index}
-              sx={{
-                justifyContent: msg.sender === user.id ? 'flex-end' : 'flex-start',
-                mb: 1,
-                px: 0,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', maxWidth: '80%' }}>
-                {msg.sender !== user.id && otherUser.username && (
-                  <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 1, width: 30, height: 30 }}>
-                    {otherUser.username[0].toUpperCase()}
-                  </Avatar>
-                )}
-                <Paper
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 3,
-                    maxWidth: '100%',
-                    wordBreak: 'break-word',
-                    bgcolor: msg.sender === user.id ? theme.palette.primary.light : theme.palette.grey[300],
-                    color: theme.palette.text.primary,
-                    boxShadow: 1,
-                  }}
-                >
-                  <ListItemText
-                    primary={<Typography variant="body2" color="inherit">{msg.content}</Typography>}
-                    secondary={<Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{new Date(msg.timestamp).toLocaleTimeString()}</Typography>}
-                  />
-                </Paper>
-                {msg.sender === user.id && user.username && (
-                  <Avatar sx={{ bgcolor: theme.palette.primary.main, ml: 1, width: 30, height: 30 }}>
-                    {user.username[0].toUpperCase()}
-                  </Avatar>
-                )}
-              </Box>
-            </ListItem>
-          ))}
+          {messages.map((msg, index) => {
+            const isCurrentUser = msg.sender === user.id;
+            const senderName = isCurrentUser ? 'You' : (otherUser.profile?.name || otherUser.username);
+            const senderAvatar = isCurrentUser ? user.username[0].toUpperCase() : otherUser.username[0].toUpperCase();
+
+            return (
+              <ListItem
+                key={index}
+                sx={{
+                  justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
+                  mb: 1.5,
+                  px: 0,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'flex-end', maxWidth: '80%' }}>
+                  {!isCurrentUser && (
+                    <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 1, width: 32, height: 32, fontSize: '0.8rem' }}>
+                      {senderAvatar}
+                    </Avatar>
+                  )}
+                  <Paper
+                    sx={{
+                      p: 1.5,
+                      borderRadius: isCurrentUser ? '20px 20px 5px 20px' : '20px 20px 20px 5px',
+                      maxWidth: '100%',
+                      wordBreak: 'break-word',
+                      bgcolor: isCurrentUser ? theme.palette.primary.light : theme.palette.grey[200],
+                      color: theme.palette.text.primary,
+                      boxShadow: theme.shadows[1],
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+                      {senderName}
+                    </Typography>
+                    <Typography variant="body2" color="inherit">
+                      {msg.content}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, textAlign: isCurrentUser ? 'right' : 'left' }}>
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Typography>
+                  </Paper>
+                  {isCurrentUser && (
+                    <Avatar sx={{ bgcolor: theme.palette.primary.main, ml: 1, width: 32, height: 32, fontSize: '0.8rem' }}>
+                      {senderAvatar}
+                    </Avatar>
+                  )}
+                </Box>
+              </ListItem>
+            );
+          })}
           <div ref={messagesEndRef} />
         </List>
 
@@ -212,23 +233,27 @@ function Chat() {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               fullWidth
-              size="small"
+              size="medium"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message..."
               variant="outlined"
-              sx={{ '& fieldset': { borderRadius: 3 } }}
+              sx={{ '& fieldset': { borderRadius: 30 } }}
+              InputProps={{
+                endAdornment: (
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    endIcon={<SendIcon />}
+                    disabled={!message.trim()}
+                    sx={{ borderRadius: 30, px: 3, fontWeight: 600, minWidth: 'auto' }}
+                  >
+                    Send
+                  </Button>
+                ),
+              }}
             />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              endIcon={<SendIcon />}
-              disabled={!message.trim()}
-              sx={{ borderRadius: 3, px: 3, fontWeight: 600 }}
-            >
-              Send
-            </Button>
           </Box>
         </Box>
       </Paper>

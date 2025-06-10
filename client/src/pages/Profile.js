@@ -75,9 +75,16 @@ function Profile() {
   // State for tab management
   const [tabValue, setTabValue] = useState(0);
 
+  // State for chats (for doctors)
+  const [chats, setChats] = useState([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
+
   useEffect(() => {
     fetchProfile();
     fetchAppointments();
+    if (user && user.role === 'doctor') {
+      fetchChats();
+    }
 
     // Add console logs here to inspect user and profile IDs after fetch
     if (user && profile._id) {
@@ -161,6 +168,20 @@ function Profile() {
       showFeedback('Failed to fetch appointments', 'error');
     } finally {
       setAppointmentsLoading(false);
+    }
+  };
+
+  const fetchChats = async () => {
+    if (!user || user.role !== 'doctor') return;
+    setChatsLoading(true);
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/chats`);
+      setChats(response.data);
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+      showFeedback('Failed to fetch chats', 'error');
+    } finally {
+      setChatsLoading(false);
     }
   };
 
@@ -363,6 +384,7 @@ function Profile() {
                 [ // Use an array for multiple tabs
                   <Tab key="availability" label="Manage Availability" />,
                   <Tab key="myAppointments" label="My Appointments" />,
+                  <Tab key="myChats" label="My Chats" />
                 ]
               )}
               {(user.role === 'patient' && isPatientViewingDoctor) && (
@@ -412,7 +434,7 @@ function Profile() {
                                         <MenuItem value="">Select Specialization</MenuItem>
                                         {[ 'Cardiology', 'Dermatology', 'Neurology', 'Pediatrics', 'Psychiatry', 'Orthopedics', 'Gynecology', 'Ophthalmology', 'ENT', 'General Medicine', 'Nephrologist', 'Oncologist', 'Radiologist', 'Urologist' ].map(spec => (<MenuItem key={spec} value={spec}>{spec}</MenuItem>))}
                                       </Select>
-                                      {!!formErrors.specialization && (<Typography variant="caption" color="error" sx={{ml: 2}}>{formErrors.specialization}</Typography>)}\n                                    </FormControl>
+                                    </FormControl>
                                   </Grid>
                                   <Grid item xs={12} md={6}>
                                     <TextField fullWidth label="Years of Experience" name="experience" type="number" value={profile.experience || ''} onChange={handleChange} required variant="outlined" size="large" error={!!formErrors.experience} helperText={formErrors.experience} />
@@ -631,6 +653,59 @@ function Profile() {
 
             {/* My Booked Appointments Tab (Tab 1 for Patients viewing own profile) - Already Handled Above */}
             {/* We handle the patient's own appointments in the same block as doctor's appointments based on conditional rendering */}
+
+            {/* My Chats Tab (Tab 3 for Doctors) */}
+            {tabValue === 3 && (user.role === 'doctor' && isViewingOwnProfile) && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" gutterBottom sx={{fontWeight: 600, mb: 2}}>My Chats</Typography>
+                {chatsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress size={24} />
+                    <Typography sx={{ ml: 2 }}>Loading chats...</Typography>
+                  </Box>
+                ) : chats.length > 0 ? (
+                  <List>
+                    {chats.map((chat) => (
+                      <ListItem
+                        key={chat._id}
+                        button
+                        onClick={() => navigate(`/chat/${chat._id}`)}
+                        sx={{
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          mb: 1,
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                          },
+                        }}
+                      >
+                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            Patient: {chat.patient?.profile?.name || chat.patient?.username}
+                          </Typography>
+                          {chat.lastMessage && (
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(chat.lastMessage).toLocaleString()}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Last Message: {chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].content : 'No messages yet.'}
+                        </Typography>
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography variant="body1" color="text.secondary" align="center">
+                    You have no chats yet.
+                  </Typography>
+                )}
+              </Box>
+            )}
 
           </Box>
 

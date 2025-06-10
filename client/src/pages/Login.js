@@ -15,7 +15,7 @@ import { useFeedback } from '../contexts/FeedbackContext';
 
 function Login() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -38,9 +38,14 @@ function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      showFeedback('Login successful!', 'success');
-      navigate('/');
+      const result = await login(formData.username, formData.password);
+      if (result.success) {
+        showFeedback('Login successful!', 'success');
+        navigate('/');
+      } else {
+        setError(result.error);
+        showFeedback(result.error, 'error');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to login');
       showFeedback(err.response?.data?.message || 'Failed to login', 'error');
@@ -79,17 +84,17 @@ function Login() {
             {error}
           </Alert>
         )}
-        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
           <TextField
             margin="normal"
             required
             fullWidth
-            id="email"
-            label="Email Address"
-            name="email"
-            autoComplete="email"
+            id="username"
+            label="Username"
+            name="username"
+            autoComplete="username"
             autoFocus
-            value={formData.email}
+            value={formData.username}
             onChange={handleChange}
             sx={{ mb: 2 }}
           />

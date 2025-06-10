@@ -336,25 +336,26 @@ function DoctorList() {
                     height: '100%', 
                     display: 'flex', 
                     flexDirection: 'column',
-                    transition: 'transform 0.2s',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 6
-                    }
+                      transform: 'translateY(-8px)',
+                      boxShadow: 8,
+                    },
+                    borderRadius: 3, // Rounded corners
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1 }}>
+                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Avatar
                         src={doctorImages[index % doctorImages.length]}
                         alt={`Dr. ${doctor.profile?.name}`}
-                        sx={{ width: 60, height: 60, mr: 2 }}
+                        sx={{ width: 80, height: 80, mr: 2, border: '3px solid #1976d2' }} // Larger avatar with a border
                       />
                       <Box>
-                        <Typography variant="h6" gutterBottom>
+                        <Typography variant="h5" component="div" gutterBottom sx={{ fontWeight: 600, color: 'text.primary' }}>
                           Dr. {doctor.profile?.name || 'Unknown'}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                        <Typography variant="subtitle1" color="primary" gutterBottom sx={{ fontWeight: 500 }}>
                           {doctor.profile?.specialization || 'General Medicine'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
@@ -366,16 +367,27 @@ function DoctorList() {
                       </Box>
                     </Box>
                     
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      fullWidth
-                      component={Link}
-                      to={`/doctors/${doctor._id}/book`}
-                      sx={{ mt: 2, py: 1.5, fontWeight: 600, borderRadius: 3 }}
-                    >
-                      Book Appointment
-                    </Button>
+                    <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
+                        component={Link}
+                        to={`/doctors/${doctor._id}/book`}
+                        sx={{ py: 1.5, fontWeight: 600, borderRadius: 3 }}
+                      >
+                        Book Appointment
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        fullWidth
+                        onClick={() => handleChat(doctor._id)}
+                        sx={{ py: 1.5, fontWeight: 600, borderRadius: 3 }}
+                      >
+                        Chat with Doctor
+                      </Button>
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
