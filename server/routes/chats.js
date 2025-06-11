@@ -6,18 +6,60 @@ const auth = require('../middleware/auth');
 // Get all chats for a user
 router.get('/', auth, async (req, res) => {
   try {
+    console.log(`[Chats Backend] Fetching chats for user: ${req.user.userId}, role: ${req.user.role}`);
+
     const chats = await Chat.find({
       $or: [
         { doctor: req.user.userId },
         { patient: req.user.userId }
       ]
     })
-    .populate('doctor', 'username profile.name profile.specialization')
-    .populate('patient', 'username profile.name')
+    .populate('doctor', 'username profile.name profile.specialization role')
+    .populate('patient', 'username profile.name profile.email role')
     .sort({ lastMessage: -1 });
 
-    res.json(chats);
+    console.log(`[Chats Backend] Found ${chats.length} chats.`);
+    if (chats.length > 0) {
+        console.log(`[Chats Backend] First chat details (truncated):`, JSON.stringify(chats[0], (key, value) => {
+            if (key === 'messages' && Array.isArray(value)) {
+                return `[${value.length} messages]`;
+            }
+            return value;
+        }, 2).substring(0, 500));
+    }
+
+    const transformedChats = chats.map(chat => {
+      const otherParticipant = chat.doctor._id.toString() === req.user.userId
+        ? chat.patient
+        : chat.doctor;
+
+      const otherParticipantProfile = otherParticipant.profile || {};
+
+      return {
+        _id: chat._id,
+        messages: chat.messages,
+        lastMessage: chat.lastMessage,
+        status: chat.status,
+        createdAt: chat.createdAt,
+        otherParticipant: {
+          _id: otherParticipant._id,
+          username: otherParticipant.username,
+          role: otherParticipant.role,
+          profile: {
+            name: otherParticipantProfile.name || 'Unknown',
+            specialization: otherParticipantProfile.specialization || 'N/A',
+            email: otherParticipantProfile.email || 'N/A'
+          }
+        },
+        doctor: chat.doctor,
+        patient: chat.patient,
+      };
+    });
+
+    console.log(`[Chats Backend] Sending ${transformedChats.length} transformed chats.`);
+    res.json(transformedChats);
   } catch (error) {
+    console.error('[Chats Backend] Error fetching chats:', error);
     res.status(500).json({ message: 'Error fetching chats', error: error.message });
   }
 });
@@ -26,8 +68,8 @@ router.get('/', auth, async (req, res) => {
 router.get('/:chatId', auth, async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.chatId)
-      .populate('doctor', 'username profile.name profile.specialization')
-      .populate('patient', 'username profile.name');
+      .populate('doctor', 'username profile.name profile.specialization role')
+      .populate('patient', 'username profile.name profile.email role');
 
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });

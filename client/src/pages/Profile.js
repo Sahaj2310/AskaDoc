@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -26,7 +26,15 @@ import {
   DialogContent,
   DialogActions,
   Tabs,
-  Tab
+  Tab,
+  Fade,
+  Zoom,
+  Avatar,
+  OutlinedInput,
+  Checkbox,
+  ListItemAvatar,
+  ListItemSecondaryAction,
+  DialogContentText,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '@mui/material/styles';
@@ -34,6 +42,38 @@ import { useFeedback } from '../contexts/FeedbackContext';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EditIcon from '@mui/icons-material/Edit';
+import CloseIcon from '@mui/icons-material/Close';
+import SaveIcon from '@mui/icons-material/Save';
+import PhoneIcon from '@mui/icons-material/Phone';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import WorkIcon from '@mui/icons-material/Work';
+import SchoolIcon from '@mui/icons-material/School';
+import TranslateIcon from '@mui/icons-material/Translate';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import ChatIcon from '@mui/icons-material/Chat';
+import EmailIcon from '@mui/icons-material/Email';
+import PersonIcon from '@mui/icons-material/Person';
+import LanguageIcon from '@mui/icons-material/Language';
+
+const SPECIALIZATIONS = [
+  'Cardiology',
+  'Dermatology',
+  'Family Medicine',
+  'Internal Medicine',
+  'Neurology',
+  'Pediatrics',
+  'Psychiatry',
+  'Orthopedics',
+  'Oncology',
+  'Gynecology',
+  'Urology',
+  'Ophthalmology',
+  'ENT',
+  'Dentistry',
+  'General Practitioner',
+];
 
 function Profile() {
   const { user } = useAuth();
@@ -43,16 +83,35 @@ function Profile() {
   const [profile, setProfile] = useState({
     name: '',
     email: '',
+    reviews: [],
+    profile: { // Nested profile object
     phone: '',
+      address: '',
     specialization: '',
     experience: '',
-    fees: '',
-    reviews: []
+      education: '',
+      languages: [],
+      consultationFee: '',
+    }
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // State for form data for editing
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    specialization: '',
+    experience: '',
+    education: '',
+    languages: [],
+    consultationFee: '',
+  });
 
   // State for review submission
   const [reviewComment, setReviewComment] = useState('');
@@ -79,11 +138,59 @@ function Profile() {
   const [chats, setChats] = useState([]);
   const [chatsLoading, setChatsLoading] = useState(false);
 
+  // State for confirmation dialog
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false); // Tracks if there are unsaved changes
+
+  // Calculate the appointments tab index based on user role
+  const getAppointmentsTabIndex = () => {
+    return user?.role === 'doctor' ? 2 : 1;
+  };
+
+  // Debug logging for component state
+  useEffect(() => {
+    console.log('Profile Component State:', {
+      tabValue,
+      appointmentsCount: appointments.length,
+      appointmentsLoading,
+      user: user ? {
+        id: user.id,
+        role: user.role
+      } : null,
+      appointmentsTabIndex: getAppointmentsTabIndex(),
+      shouldShowAppointments: tabValue === getAppointmentsTabIndex()
+    });
+  }, [tabValue, appointments, appointmentsLoading, user]);
+
+  // Fetch appointments when tab changes to appointments tab
+  useEffect(() => {
+    const appointmentsTabIndex = getAppointmentsTabIndex();
+    if (tabValue === appointmentsTabIndex && user) {
+      console.log('Tab changed to appointments, fetching appointments...');
+      fetchAppointments();
+    }
+  }, [tabValue, user]);
+
   useEffect(() => {
     fetchProfile();
     fetchAppointments();
     if (user && user.role === 'doctor') {
       fetchChats();
+    }
+
+    // Initialize formData when user data is available
+    if (user) {
+      setFormData({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.profile?.phone || '',
+        address: user?.profile?.address || '',
+        specialization: user?.profile?.specialization || '',
+        experience: user?.profile?.experience || '',
+        education: user?.profile?.education || '',
+        languages: user?.profile?.languages || [],
+        consultationFee: user?.profile?.consultationFee || '',
+      });
     }
 
     // Add console logs here to inspect user and profile IDs after fetch
@@ -93,79 +200,101 @@ function Profile() {
       console.log('User ID === Profile ID:', user.id === profile._id);
     }
 
-  }, [user, profile._id]); // Add profile._id to dependency array to log after it's set
+  }, [user, profile._id]);
 
-  const fetchProfile = async () => {
-    if (!user || !user.id) return;
+  useEffect(() => {
+    // Compare formData with initial profile data to determine if changes exist
+    const initialProfileData = {
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.profile?.phone || '',
+      address: user?.profile?.address || '',
+      specialization: user?.profile?.specialization || '',
+      experience: user?.profile?.experience || '',
+      education: user?.profile?.education || '',
+      languages: user?.profile?.languages || [],
+      consultationFee: user?.profile?.consultationFee || '',
+    };
+    const currentFormData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      specialization: formData.specialization,
+      experience: formData.experience,
+      education: formData.education,
+      languages: formData.languages,
+      consultationFee: formData.consultationFee,
+    };
+    setHasChanges(JSON.stringify(initialProfileData) !== JSON.stringify(currentFormData));
+  }, [formData, user]);
+
+  const fetchProfile = useCallback(async () => {
+    if (!user || !user.id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      // When viewing own profile (/profile), always use user.id
-      const profileResponse = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/users/profile/${user.id}`
-      );
-      // Update state with fetched profile data, ensuring _id is set
-      setProfile(prev => ({
-        ...prev,
-        ...profileResponse.data,
-        profile: profileResponse.data.profile || {},
-        reviews: profileResponse.data.profile?.reviews || [],
-        _id: profileResponse.data._id // Explicitly set _id from the response
-      }));
-
-      // Check for incomplete profile and set a message
-      const fetchedUserData = profileResponse.data;
-      const fetchedProfile = fetchedUserData.profile;
-      let completionMessage = '';
-      if (!fetchedProfile?.name || !fetchedProfile?.email || !fetchedProfile?.phone) {
-        completionMessage = 'Please complete your basic profile information.';
-      }
-      if (user.role === 'doctor') {
-        if (!fetchedProfile?.specialization || fetchedProfile?.experience === undefined || fetchedProfile?.fees === undefined) {
-          completionMessage = completionMessage
-            ? `${completionMessage} Also, please provide your specialization, experience, and fees.`
-            : 'As a doctor, please complete your specialization, experience, and fees details.';
-        }
-
-        // Fetch doctor's availability if the logged-in user is a doctor viewing their own profile
-        // Use fetchedUserData._id to be sure we have the ID from the response
-        if (user.role === 'doctor' && fetchedUserData._id === user.id) {
-            try {
-                const availabilityResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/appointments/doctors/me/availability`);
-                setAvailability(availabilityResponse.data);
-            } catch (availabilityError) {
-                console.error('Error fetching doctor availability:', availabilityError);
-                showFeedback('Failed to fetch availability.', 'error');
-            }
-         }
-       }
-       if (completionMessage) {
-           showFeedback(completionMessage, 'info');
-       }
-
+      // Changed endpoint to fetch authenticated user's profile directly
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/profile`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      console.log('Raw profile fetch response:', response.data);
+      setProfile(response.data);
+      setFormData(response.data.profile || {});
+      console.log('Profile state after fetch:', response.data);
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Check for 404 specifically and navigate if the user profile is not found
-      if (error.response && error.response.status === 404) {
-        setError('Your profile was not found.');
-        // Optionally navigate to a setup page or show a different message
-        // navigate('/create-profile'); // Example: navigate to a profile creation page
-      } else {
-        setError('Could not fetch profile data.');
-      }
-      showFeedback(error.response?.data?.message || 'Failed to fetch profile data', 'error');
+      showFeedback(error.response?.data?.message || 'Failed to fetch profile', 'error');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [user, showFeedback]);
 
   const fetchAppointments = async () => {
-    if (!user || !user.id) return;
+    if (!user || !user.id) {
+      console.log('Cannot fetch appointments: No user or user ID');
+      return;
+    }
     setAppointmentsLoading(true);
     try {
+      console.log('Fetching appointments for user:', user.id, 'role:', user.role);
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/appointments/me`
+        `${process.env.REACT_APP_API_URL}/api/appointments/me`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
-      setAppointments(response.data);
+      console.log('Raw appointments response:', JSON.stringify(response.data, null, 2));
+      
+      if (Array.isArray(response.data)) {
+        const validAppointments = response.data.filter(appointment => {
+          const isValid = appointment && 
+                         appointment._id && 
+                         appointment.time && 
+                         appointment.status &&
+                         (appointment.doctor || appointment.patient);
+          
+          if (!isValid) {
+            console.warn('Invalid appointment data:', JSON.stringify(appointment, null, 2));
+          }
+          return isValid;
+        });
+
+        console.log('Setting appointments state with:', validAppointments.length, 'valid appointments');
+        setAppointments(validAppointments);
+      } else {
+        console.error('Invalid appointments data:', response.data);
+        showFeedback('Invalid appointments data received', 'error');
+      }
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      showFeedback('Failed to fetch appointments', 'error');
+      showFeedback(error.response?.data?.message || 'Failed to fetch appointments', 'error');
     } finally {
       setAppointmentsLoading(false);
     }
@@ -187,116 +316,158 @@ function Profile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setFormErrors({});
-
-    const errors = {};
-    if (!profile.name) errors.name = 'Name is required';
-    if (!profile.email) errors.email = 'Email is required';
-    if (!profile.phone) errors.phone = 'Phone number is required';
-
-    if (user.role === 'doctor') {
-      if (!profile.specialization) errors.specialization = 'Specialization is required';
-      if (profile.experience === undefined || profile.experience === null || parseFloat(profile.experience) < 0) errors.experience = 'Valid years of experience is required';
-      if (profile.fees === undefined || profile.fees === null || parseFloat(profile.fees) < 0) errors.fees = 'Consultation fee is required';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
-
-    setLoading(true);
-
     try {
+      // Validate required fields
+      if (!formData.name || !formData.email || !formData.phone) {
+        setError('Name, email, and phone are required');
+        return;
+      }
+
+      // Additional validation for doctors
+    if (user.role === 'doctor') {
+      if (!formData.specialization) {
+          setError('Specialization is required for doctors');
+          return;
+        }
+        if (!formData.experience || formData.experience < 0) {
+          setError('Valid years of experience is required for doctors');
+          return;
+        }
+        if (!formData.fees || formData.fees < 0) {
+          setError('Consultation fee is required for doctors');
+      return;
+        }
+    }
+
+      // Prepare the payload
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        profile: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address
+        }
+      };
+
+      // Add doctor-specific fields if user is a doctor
+      if (user.role === 'doctor') {
+        payload.specialization = formData.specialization;
+        payload.experience = parseFloat(formData.experience);
+        payload.fees = parseFloat(formData.fees);
+        payload.profile.specialization = formData.specialization;
+        payload.profile.experience = parseFloat(formData.experience);
+        payload.profile.fees = parseFloat(formData.fees);
+        payload.profile.education = formData.education;
+        payload.profile.languages = formData.languages;
+      }
+
       const response = await axios.put(
         `${process.env.REACT_APP_API_URL}/api/users/profile`,
-        profile
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
-      setProfile(prev => ({ ...prev, ...response.data.profile })); // Update profile state with saved data
-      setSuccess('Profile updated successfully');
-      showFeedback('Profile updated successfully', 'success');
-      // No need to call fetchProfile again here as we update state directly and don't re-fetch availability on profile update
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error updating profile');
-      showFeedback(error.response?.data?.message || 'Error updating profile', 'error');
-    }
 
-    setLoading(false);
+      setProfile(response.data);
+      setFormData(response.data.profile);
+      setIsEditMode(false);
+      setSuccess('Profile updated successfully');
+      setError(null);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setError(error.response?.data?.message || 'Error updating profile');
+      setSuccess(null);
+    }
   };
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
+    setReviewLoading(true);
     setReviewFormErrors({});
 
-    const errors = {};
-    if (!reviewComment.trim()) errors.reviewComment = 'Review comment cannot be empty';
-
-    if (Object.keys(errors).length > 0) {
-      setReviewFormErrors(errors);
+    if (!reviewComment.trim()) {
+      setReviewFormErrors({ comment: 'Review comment cannot be empty.' });
+      setReviewLoading(false);
       return;
     }
 
-    setReviewLoading(true);
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/users/profile/${profile._id}/reviews`, {
+        comment: reviewComment,
+        rating: 5, // Default rating for simplicity, can be extended
+      });
+      setProfile(prev => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          reviews: response.data.reviews || []
+        }
+      }));
+      setReviewComment('');
+      showFeedback('Review submitted successfully!', 'success');
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      showFeedback(err.response?.data?.message || 'Failed to submit review', 'error');
+    } finally {
+    setReviewLoading(false);
+    }
+  };
+
+  const handleAddSlot = async (e) => {
+    e.preventDefault();
+    if (!newSlotTime) return;
 
     try {
-      if (!profile._id) {
-        console.error("Doctor profile ID not available for review submission.");
-        showFeedback("Cannot submit review: Doctor profile not loaded.", 'error');
-        setReviewLoading(false);
+      setAddSlotLoading(true);
+      const slotTime = new Date(newSlotTime);
+      
+      // Validate the date
+      if (isNaN(slotTime.getTime())) {
+        showFeedback('Invalid date selected', 'error');
         return;
       }
 
-      await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/users/${profile._id}/reviews`,
-        { comment: reviewComment }
+      // Ensure the date is in the future
+      if (slotTime <= new Date()) {
+        showFeedback('Please select a future date and time', 'error');
+        return;
+      }
+
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/appointments/doctors/me/availability`, 
+        { time: slotTime.toISOString() }
       );
-
-      showFeedback('Review submitted successfully', 'success');
-      setReviewComment('');
-      fetchProfile();
-
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      showFeedback(error.response?.data?.message || 'Failed to submit review', 'error');
-    }
-
-    setReviewLoading(false);
-  };
-
-  // Handle adding a new availability slot
-  const handleAddSlot = async (e) => {
-    e.preventDefault();
-    if (!newSlotTime) {
-      showFeedback('Please select a time for the availability slot.', 'warning');
-      return;
-    }
-
-    setAddSlotLoading(true);
-    try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/appointments/doctors/me/availability`, { time: newSlotTime });
-      showFeedback(response.data.message, 'success');
-      setAvailability(prev => [...prev, response.data.slot]); // Add the new slot to state
-      setNewSlotTime(''); // Clear the input
-    } catch (error) {
-      console.error('Error adding availability slot:', error);
-      showFeedback(error.response?.data?.message || 'Failed to add availability slot.', 'error');
+      
+      // Update the availability state with the new slot
+      setAvailability(prev => [...prev, response.data.slot]);
+      setNewSlotTime('');
+      showFeedback('Availability slot added!', 'success');
+    } catch (err) {
+      console.error('Error adding slot:', err);
+      showFeedback(err.response?.data?.message || 'Failed to add slot', 'error');
     } finally {
       setAddSlotLoading(false);
     }
   };
 
-   // Handle deleting an availability slot
    const handleDeleteSlot = async (slotId) => {
-    setDeleteSlotLoading(prev => ({ ...prev, [slotId]: true }));
     try {
-      const response = await axios.delete(`${process.env.REACT_APP_API_URL}/api/appointments/doctors/me/availability/${slotId}`);
-      showFeedback(response.data.message, 'success');
-      setAvailability(prev => prev.filter(slot => slot._id !== slotId)); // Remove the slot from state
-    } catch (error) {
-      console.error('Error deleting availability slot:', error);
-      showFeedback(error.response?.data?.message || 'Failed to delete availability slot.', 'error');
+      setDeleteSlotLoading(prev => ({ ...prev, [slotId]: true }));
+      console.log('Attempting to delete slot with ID:', slotId);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/appointments/doctors/me/availability/${slotId}`);
+      setAvailability(prev => prev.filter(slot => slot._id !== slotId));
+      showFeedback('Availability slot deleted!', 'success');
+    } catch (err) {
+      console.error('Error deleting slot:', err);
+      showFeedback(err.response?.data?.message || 'Failed to delete slot', 'error');
     } finally {
       setDeleteSlotLoading(prev => ({ ...prev, [slotId]: false }));
     }
@@ -305,11 +476,16 @@ function Profile() {
   const handleAppointmentAction = async (appointmentId, action) => {
     setAppointmentActionLoading(true);
     try {
-      const response = await axios.put(
-        `${process.env.REACT_APP_API_URL}/api/appointments/${appointmentId}/${action}`
-      );
-      showFeedback(response.data.message, 'success');
-      fetchAppointments(); // Refresh appointments list
+      const response = await axios.put(`${process.env.REACT_APP_API_URL}/api/appointments/${appointmentId}/${action}`);
+      
+      // Update the appointments list with the new status
+      setAppointments(prev => prev.map(appt => 
+        appt._id === appointmentId 
+          ? { ...appt, status: action === 'cancel' ? 'cancelled' : action }
+          : appt
+      ));
+      
+      showFeedback(`Appointment ${action}ed successfully!`, 'success');
       setCancelDialogOpen(false);
       setSelectedAppointment(null);
     } catch (error) {
@@ -321,33 +497,111 @@ function Profile() {
   };
 
   const getAppointmentStatusChip = (status) => {
-    const statusConfig = {
-      scheduled: { color: 'primary', icon: <AccessTimeIcon />, label: 'Scheduled' },
-      completed: { color: 'success', icon: <CheckCircleIcon />, label: 'Completed' },
-      cancelled: { color: 'error', icon: <CancelIcon />, label: 'Cancelled' }
-    };
-    const config = statusConfig[status] || statusConfig.scheduled;
-    return (
-      <Chip
-        icon={config.icon}
-        label={config.label}
-        color={config.color}
-        size="small"
-        sx={{ ml: 1 }}
-      />
-    );
+    let color;
+    switch (status) {
+      case 'pending':
+        color = 'warning';
+        break;
+      case 'approved':
+        color = 'primary';
+        break;
+      case 'completed':
+        color = 'success';
+        break;
+      case 'cancelled':
+        color = 'error';
+        break;
+      default:
+        color = 'default';
+    }
+    const IconComponent = status === 'pending' ? AccessTimeIcon : status === 'approved' ? CheckCircleIcon : CancelIcon; // Placeholder icons
+    return <Chip label={status} color={color} size="small" icon={<IconComponent />} />;
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProfile(prev => ({
+    console.log(`handleChange: ${e.target.name} = ${e.target.value}`);
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleLanguageChange = (event) => {
+    const {
+      target: { value },
+    } = event;
+    setFormData(prev => ({
       ...prev,
-      [name]: value
+      languages: typeof value === 'string' ? value.split(',') : value,
     }));
   };
 
   const handleTabChange = (event, newValue) => {
+    console.log('Tab changing from', tabValue, 'to', newValue);
     setTabValue(newValue);
+  };
+
+  const handleCancelEdit = () => {
+    if (hasChanges) {
+      setShowCancelConfirm(true);
+    } else {
+      setIsEditMode(false);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setIsEditMode(false);
+    setShowCancelConfirm(false);
+    // Reset form data to original values from user prop
+    setFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.profile?.phone || '',
+      address: user?.profile?.address || '',
+      specialization: user?.profile?.specialization || '',
+      experience: user?.profile?.experience || '',
+      education: user?.profile?.education || '',
+      languages: user?.profile?.languages || [],
+      consultationFee: user?.profile?.consultationFee || '',
+    });
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointment) return;
+    
+    try {
+      setAppointmentActionLoading(true);
+      console.log('Cancelling appointment:', selectedAppointment._id);
+      
+      const response = await axios.put(
+        `${process.env.REACT_APP_API_URL}/api/appointments/${selectedAppointment._id}/cancel`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      
+      // Update the appointments list regardless of response format
+      setAppointments(appointments.map(apt => 
+        apt._id === selectedAppointment._id 
+          ? { ...apt, status: 'cancelled' }
+          : apt
+      ));
+      
+      showFeedback('Appointment cancelled successfully', 'success');
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      showFeedback(
+        error.response?.data?.message || 'Failed to cancel appointment',
+        'error'
+      );
+    } finally {
+      setAppointmentActionLoading(false);
+      setCancelDialogOpen(false);
+      setSelectedAppointment(null);
+    }
   };
 
   if (!user) {
@@ -362,209 +616,362 @@ function Profile() {
   const isPatientViewingDoctor = user.role === 'patient' && profile.role === 'doctor';
   const isViewingOwnProfile = user && profile._id && user.id === profile._id;
 
-
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: 'calc(100vh - 80px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Container maxWidth="md" sx={{ mt: { xs: 6, md: 8 }, mb: { xs: 6, md: 8 } }}>
-        <Paper
-          elevation={6}
-          sx={{
-            p: { xs: 3, md: 4 },
-            borderRadius: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: 3, md: 4 }
-          }}
-        >
-          {/* Tabs */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="profile sections tabs">
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            Profile
+          </Typography>
+          
+          <Tabs value={tabValue} onChange={handleTabChange}>
               <Tab label="Profile Details" />
-              {(user.role === 'doctor' && isViewingOwnProfile) && (
-                [ // Use an array for multiple tabs
-                  <Tab key="availability" label="Manage Availability" />,
-                  <Tab key="myAppointments" label="My Appointments" />,
-                  <Tab key="myChats" label="My Chats" />
-                ]
-              )}
-              {(user.role === 'patient' && isPatientViewingDoctor) && (
-                  <Tab label="Reviews" />
-              )}
-               {(user.role === 'patient' && !isPatientViewingDoctor && isViewingOwnProfile) && (
+            {user?.role === 'doctor' && <Tab label="Availability" />}
                    <Tab label="My Booked Appointments" />
-               )}
+            {user?.role === 'doctor' && <Tab label="My Patients" />}
             </Tabs>
+
+          {/* Debug info - only show in development */}
+          {/* Removed debug info as it's no longer needed for troubleshooting */}
+          {/*
+          {process.env.NODE_ENV === 'development' && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Typography variant="body2">
+                Current Tab: {tabValue}
+                <br />
+                Appointments Tab Index: {getAppointmentsTabIndex()}
+                <br />
+                Should Show Appointments: {tabValue === getAppointmentsTabIndex() ? 'Yes' : 'No'}
+                <br />
+                Appointments Count: {appointments.length}
+              </Typography>
           </Box>
+          )}
+          */}
 
-          {/* Tab Content */}
-          <Box sx={{ mt: 3 }}>
-            {/* Profile Details Tab (Tab 0) */}
+          {/* Profile Details Tab Content */}
             {tabValue === 0 && (
-              <Box>
-                 {/* Existing Profile Details Section content goes here */}
-                 <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 3, md: 4 }, flexDirection: { xs: 'column', md: 'row' } }}>
-                    <Box sx={{ width: { xs: '100%', md: '40%' }, display: 'flex', justifyContent: 'center' }}>
-                        <Box component="img" src="/illustrations/profile.svg" alt="Profile Illustration" sx={{ width: '100%', height: 'auto', maxWidth: 300, filter: theme.palette.mode === 'light' ? 'invert(0)' : 'invert(1)' }} />
-                    </Box>
-                    <Box sx={{ width: { xs: '100%', md: '60%' } }}>
-                      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600, mb: 3, textAlign: { xs: 'center', md: 'left' } }}>
-                        {user.role === 'doctor' ? 'Your Profile' : `${profile.name || profile.username}'s Profile`}
-                      </Typography>
-
-                      {/* Only show profile update form if viewing own profile */}
-                      {isViewingOwnProfile && (
-                        <form onSubmit={handleSubmit}>
-                           <Grid container spacing={3}>
-                              <Grid item xs={12}>
-                                <TextField fullWidth label="Name" name="name" value={profile.name || ''} onChange={handleChange} required variant="outlined" size="large" error={!!formErrors.name} helperText={formErrors.name} />
-                              </Grid>
-                              <Grid item xs={12} md={6}>
-                                <TextField fullWidth label="Email" name="email" type="email" value={profile.email || ''} onChange={handleChange} required variant="outlined" size="large" error={!!formErrors.email} helperText={formErrors.email} />
-                              </Grid>
-                              <Grid item xs={12} md={6}>
-                                <TextField fullWidth label="Phone" name="phone" value={profile.phone || ''} onChange={handleChange} required variant="outlined" size="large" />
-                              </Grid>
-
-                              {user.role === 'doctor' && (
-                                <>
-                                  <Grid item xs={12} md={6}>
-                                    <FormControl fullWidth required variant="outlined" size="large" error={!!formErrors.specialization}>
-                                      <InputLabel>Specialization</InputLabel>
-                                      <Select name="specialization" value={profile.specialization || ''} label="Specialization" onChange={handleChange}>
-                                        <MenuItem value="">Select Specialization</MenuItem>
-                                        {[ 'Cardiology', 'Dermatology', 'Neurology', 'Pediatrics', 'Psychiatry', 'Orthopedics', 'Gynecology', 'Ophthalmology', 'ENT', 'General Medicine', 'Nephrologist', 'Oncologist', 'Radiologist', 'Urologist' ].map(spec => (<MenuItem key={spec} value={spec}>{spec}</MenuItem>))}
-                                      </Select>
-                                    </FormControl>
-                                  </Grid>
-                                  <Grid item xs={12} md={6}>
-                                    <TextField fullWidth label="Years of Experience" name="experience" type="number" value={profile.experience || ''} onChange={handleChange} required variant="outlined" size="large" error={!!formErrors.experience} helperText={formErrors.experience} />
-                                  </Grid>
-                                  <Grid item xs={12} md={6}>
-                                    <TextField fullWidth label="Consultation Fee ($)" name="fees" type="number" value={profile.fees || ''} onChange={handleChange} required variant="outlined" size="large" error={!!formErrors.fees} helperText={formErrors.fees} />
-                                  </Grid>
-                                </>
-                              )}
-                              <Grid item xs={12}>
-                                <Button type="submit" variant="contained" color="primary" size="large" sx={{ mt: 2, borderRadius: 3, py: 1.5, fontWeight: 600 }} disabled={loading}>{loading ? <CircularProgress size={24} color="inherit" /> : 'Update Profile'}</Button>
-                              </Grid>
-                           </Grid>
-                        </form>
-                      )}
-
-                      {/* Display doctor details if viewing doctor profile (and not own) */}
-                      {user.role === 'patient' && profile.role === 'doctor' && (
-                          <Box>
-                              <Typography variant="h6" gutterBottom sx={{fontWeight: 600}}>Doctor Information</Typography>
-                              <Typography>Name: {profile.name || 'Not specified'}</Typography>
-                              <Typography>Email: {profile.email || 'Not specified'}</Typography>
-                              <Typography>Phone: {profile.phone || 'Not specified'}</Typography>
-                              <Typography>Specialization: {profile.specialization || 'Not specified'}</Typography>
-                              <Typography>Experience: {profile.experience || '0'} years</Typography>
-                              <Typography>Consultation Fee: ${profile.fees || '0'}</Typography>
-                          </Box>
-                      )}
-                    </Box>
-                 </Box>
+            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {/* Profile Header */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+                  Your Profile
+                </Typography>
+                {!isEditMode ? (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<EditIcon />}
+                    onClick={() => setIsEditMode(true)}
+                  >
+                    Update Details
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<CancelIcon />}
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                )}
               </Box>
-            )}
 
-            {/* Manage Availability Tab (Tab 1 for Doctors) */}
-            {tabValue === 1 && (user.role === 'doctor' && isViewingOwnProfile) && (
-               <Box sx={{ mb: 4 }}>
-                   <Typography variant="h5" gutterBottom sx={{fontWeight: 600, mb: 2}}>Manage Availability</Typography>
-                   <form onSubmit={handleAddSlot} style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                       <TextField label="New Available Time" type="datetime-local" value={newSlotTime} onChange={(e) => setNewSlotTime(e.target.value)} InputLabelProps={{ shrink: true, }} size="small" required sx={{ flexGrow: 1 }} inputProps={{ min: new Date().toISOString().slice(0, 16) }} />
-                       <Button type="submit" variant="contained" color="primary" disabled={addSlotLoading || !newSlotTime} sx={{ fontWeight: 600 }}>{addSlotLoading ? <CircularProgress size={24} color="inherit" /> : 'Add Slot'}</Button>
-                   </form>
-                   <Typography variant="h6" sx={{fontWeight: 600, mb: 1}}>Available Slots:</Typography>
-                   {availability.length > 0 ? (
-                       <List>
-                           {availability.map(slot => (<ListItem key={slot._id} secondaryAction={(<Button variant="outlined" color="error" size="small" onClick={() => handleDeleteSlot(slot._id)} disabled={deleteSlotLoading[slot._id] || slot.isBooked}>{deleteSlotLoading[slot._id] ? <CircularProgress size={16} color="inherit" /> : (slot.isBooked ? 'Booked' : 'Delete')}</Button>)}><ListItemText primary={new Date(slot.time).toLocaleString()} secondary={slot.isBooked ? 'Booked' : 'Available'} /></ListItem>))}
-                       </List>
-                   ) : (<Typography variant="body2" color="text.secondary">No availability slots added yet.</Typography>)}
-               </Box>
-            )}
+                  {isEditMode ? (
+                <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                           <Grid container spacing={3}>
+                    {/* Personal Information */}
+                    <Grid item xs={12} md={6}>
+                      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+                        <Typography variant="h6" gutterBottom sx={{ mb: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', pb: 1 }}>
+                          Personal Information
+                        </Typography>
+                          <TextField
+                          label="Full Name"
+                            name="name"
+                          value={formData.name || ''}
+                            onChange={handleChange}
+                            fullWidth
+                            margin="normal"
+                          required
+                          />
+                          <TextField
+                            label="Email"
+                            name="email"
+                          type="email"
+                          value={formData.email || ''}
+                            onChange={handleChange}
+                            fullWidth
+                            margin="normal"
+                          required
+                          />
+                          <TextField
+                          label="Phone Number"
+                            name="phone"
+                          value={formData.phone || ''}
+                            onChange={handleChange}
+                            fullWidth
+                            margin="normal"
+                          required
+                          />
+                          <TextField
+                            label="Address"
+                            name="address"
+                          value={formData.address || ''}
+                            onChange={handleChange}
+                            fullWidth
+                            margin="normal"
+                          multiline // Make it multiline
+                          rows={3} // Set initial rows
+                          />
+                      </Paper>
+                        </Grid>
 
-            {/* My Appointments Tab (Tab 2 for Doctors, Tab 1 for Patients viewing own profile) */}
-{((tabValue === 2 && user.role === 'doctor' && isViewingOwnProfile) ||
-  (tabValue === 1 && user.role === 'patient' && !isPatientViewingDoctor && isViewingOwnProfile)) && (
-  <Box sx={{ mb: 4 }}>
-    <Typography
-      variant="h5"
-      gutterBottom
-      sx={{ fontWeight: 600, color: 'text.primary' }}
-    >
-      {user.role === 'doctor' ? 'My Appointments' : 'My Booked Appointments'}
-    </Typography>
+                    {/* Doctor Specific Information */}
+                        {user?.role === 'doctor' && (
+                      <Grid item xs={12} md={6}>
+                        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+                          <Typography variant="h6" gutterBottom sx={{ mb: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', pb: 1 }}>
+                            Professional Details
+                          </Typography>
+                          <FormControl fullWidth margin="normal">
+                            <InputLabel id="specialization-label">Specialization</InputLabel>
+                                <Select
+                              labelId="specialization-label"
+                              id="specialization"
+                                  name="specialization"
+                              value={formData.specialization || ''}
+                              label="Specialization"
+                                  onChange={handleChange}
+                              required
+                                >
+                                  {SPECIALIZATIONS.map((spec) => (
+                                    <MenuItem key={spec} value={spec}>
+                                      {spec}
+                                    </MenuItem>
+                                  ))}
+                                      </Select>
+                              </FormControl>
+                              <TextField
+                            label="Experience (Years)"
+                                name="experience"
+                                type="number"
+                            value={formData.experience || ''}
+                                onChange={handleChange}
+                                fullWidth
+                                margin="normal"
+                          />
+                          <TextField
+                            label="Consultation Fee ($)"
+                            name="fees"
+                            type="number"
+                            value={formData.fees || ''}
+                            onChange={handleChange}
+                            fullWidth
+                            margin="normal"
+                          />
+                              <TextField
+                                label="Education"
+                                name="education"
+                              value={formData.education || ''}
+                                onChange={handleChange}
+                                fullWidth
+                                margin="normal"
+                              multiline
+                              rows={3}
+                            />
+                          <FormControl fullWidth margin="normal">
+                              <InputLabel id="languages-label">Languages</InputLabel>
+                                <Select
+                                  labelId="languages-label"
+                                  id="languages"
+                                  name="languages"
+                                  multiple
+                                  value={formData.languages || []}
+                                  onChange={handleLanguageChange}
+                                  input={<OutlinedInput id="select-multiple-chip" label="Languages" />}
+                                  renderValue={(selected) => (
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                          {selected.map((value) => (
+                                              <Chip key={value} label={value} />
+                                          ))}
+                                      </Box>
+                                  )}
+                              >
+                                  {['English', 'Spanish', 'French', 'German', 'Chinese', 'Hindi', 'Arabic', 'Russian', 'Japanese', 'Korean'].map((lang) => (
+                                    <MenuItem key={lang} value={lang}>
+                                      <Checkbox checked={formData.languages.indexOf(lang) > -1} />
+                                      <ListItemText primary={lang} />
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                        </Paper>
+                            </Grid>
+                              )}
+                      </Grid>
 
+                              <Button
+                    type="submit"
+                                variant="contained"
+                    color="primary"
+                    sx={{ mt: 3, py: 1.5, fontSize: '1.1rem' }}
+                    disabled={loading}
+                  >
+                    {loading ? <CircularProgress size={24} /> : 'Save Changes'}
+                              </Button>
+                          </Box>
+              ) : (
+                <Grid container spacing={4}>
+                  {/* Personal & Contact Info Display */}
+                  <Grid item xs={12} md={6}>
+                    <Paper elevation={3} sx={{ p: 3, borderRadius: 2, bgcolor: 'background.paper' }}>
+                      <Typography variant="h6" gutterBottom sx={{ mb: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', pb: 1 }}>
+                        Personal & Contact Information
+                          </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PersonIcon color="action" />
+                                <Typography variant="body1">
+                            <Typography component="span" sx={{ fontWeight: 'bold' }}>Name:</Typography> {profile.profile?.name || 'Not set'}
+                                </Typography>
+                              </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <EmailIcon color="action" />
+                                <Typography variant="body1">
+                            <Typography component="span" sx={{ fontWeight: 'bold' }}>Email:</Typography> {profile.profile?.email || 'Not set'}
+                                </Typography>
+                              </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PhoneIcon color="action" />
+                          <Typography variant="body1">
+                            <Typography component="span" sx={{ fontWeight: 'bold' }}>Phone:</Typography> {profile.profile?.phone || 'Not set'}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                          <LocationOnIcon color="action" sx={{ mt: 0.5 }} />
+                          <Typography variant="body1">
+                            <Typography component="span" sx={{ fontWeight: 'bold' }}>Address:</Typography> {profile.profile?.address || 'Not set'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Paper>
+                           </Grid>
+
+                  {/* Doctor Specific Info Display */}
+                  {profile.role === 'doctor' && (
+                    <Grid item xs={12} md={6}>
+                      <Paper elevation={3} sx={{ p: 3, borderRadius: 2, bgcolor: 'background.paper' }}>
+                        <Typography variant="h6" gutterBottom sx={{ mb: 2, borderBottom: '1px solid rgba(0,0,0,0.1)', pb: 1 }}>
+                          Professional Details
+                              </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <MedicalServicesIcon color="action" />
+                                    <Typography variant="body1">
+                              <Typography component="span" sx={{ fontWeight: 'bold' }}>Specialization:</Typography> {profile.profile?.specialization || 'Not set'}
+                                    </Typography>
+                                  </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <WorkIcon color="action" />
+                                    <Typography variant="body1">
+                              <Typography component="span" sx={{ fontWeight: 'bold' }}>Experience:</Typography> {profile.profile?.experience ? `${profile.profile.experience} years` : 'Not set'}
+                                    </Typography>
+                                  </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AttachMoneyIcon color="action" />
+                                    <Typography variant="body1">
+                              <Typography component="span" sx={{ fontWeight: 'bold' }}>Consultation Fee:</Typography> {profile.profile?.fees ? `$${profile.profile.fees}` : 'Not set'}
+                                    </Typography>
+                                  </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                              <SchoolIcon color="action" sx={{ mt: 0.5 }} />
+                              <Typography variant="body1">
+                                  <Typography component="span" sx={{ fontWeight: 'bold' }}>Education:</Typography> {profile.profile?.education || 'Not set'}
+                                      </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                              <LanguageIcon color="action" sx={{ mt: 0.5 }} />
+                                    <Typography variant="body1">
+                                  <Typography component="span" sx={{ fontWeight: 'bold' }}>Languages:</Typography> {profile.profile?.languages && profile.profile.languages.length > 0 ? profile.profile.languages.join(', ') : 'Not set'}
+                                    </Typography>
+              </Box>
+                        </Box>
+                      </Paper>
+                                </Grid>
+                          )}
+                    </Grid>
+                  )}
+                </Box>
+          )}
+
+          {/* Appointments Tab Content */}
+          {tabValue === getAppointmentsTabIndex() && user && (
+            <Box sx={{ mt: 2 }}>
     {appointmentsLoading ? (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-        <CircularProgress size={24} />
-        <Typography sx={{ ml: 2 }}>Loading appointments...</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
       </Box>
     ) : appointments.length > 0 ? (
-      <List>
-        {appointments.map((appointment) => (
-          <ListItem
-            key={appointment._id}
+                <Grid container spacing={2}>
+                  {appointments.map((appointment) => {
+                    const appointmentTime = new Date(appointment.time);
+                    const isPast = appointmentTime < new Date();
+                    
+                    return (
+                      <Grid item xs={12} key={appointment._id}>
+                        <Paper 
+                          elevation={2} 
             sx={{
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              mb: 2,
-              p: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-            }}
-          >
-            <Box
-              sx={{
-                width: '100%',
+                            p: 2,
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 1,
-              }}
-            >
+                            flexDirection: 'column',
+                            gap: 1,
+                            opacity: isPast ? 0.7 : 1,
+                            '&:hover': {
+                              boxShadow: 3
+                            }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">
-                {user.role === 'doctor'
-                  ? `Patient: ${appointment.patient?.profile?.name || 'Unknown'}`
-                  : `Dr. ${appointment.doctor?.profile?.name || 'Unknown'}`}
+                              {user.role === 'patient' ? (
+                                `Dr. ${appointment.doctor?.profile?.name || 'Unknown Doctor'}`
+                              ) : (
+                                `Patient: ${appointment.patient?.profile?.name || 'Unknown Patient'}`
+                              )}
               </Typography>
-              {getAppointmentStatusChip(appointment.status)}
+                            <Chip 
+                              label={appointment.status} 
+                              color={
+                                appointment.status === 'scheduled' ? 'primary' :
+                                appointment.status === 'completed' ? 'success' :
+                                appointment.status === 'cancelled' ? 'error' : 'default'
+                              }
+                              size="small"
+                            />
             </Box>
 
-            <Typography variant="body1" color="text.secondary">
-              Date & Time: {new Date(appointment.time).toLocaleString()}
+                          <Typography variant="body1">
+                            {appointmentTime.toLocaleString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
             </Typography>
 
-            {user.role === 'doctor' && appointment.reason && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 1, fontStyle: 'italic' }}
-              >
-                Reason: {appointment.reason}
+                          {user.role === 'patient' && appointment.doctor?.profile?.specialization && (
+                            <Typography variant="body2" color="text.secondary">
+                              Specialization: {appointment.doctor.profile.specialization}
               </Typography>
             )}
 
-            {appointment.status === 'scheduled' &&
-              (user.role === 'doctor' || user.role === 'patient') && (
-                <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                  {user.role === 'doctor' && (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={() =>
-                        handleAppointmentAction(appointment._id, 'complete')
-                      }
-                      disabled={appointmentActionLoading}
-                    >
-                      Mark as Completed
-                    </Button>
-                  )}
-
+                          {appointment.status === 'scheduled' && !isPast && (
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                   <Button
                     variant="outlined"
                     color="error"
@@ -579,173 +986,329 @@ function Profile() {
                   </Button>
                 </Box>
               )}
-          </ListItem>
-        ))}
-      </List>
-    ) : (
-      <Typography variant="body1" color="text.secondary">
-        No appointments found.
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    No appointments found
       </Typography>
+                  {user.role === 'patient' && (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => navigate('/doctors')}
+                      sx={{ mt: 2 }}
+                    >
+                      Book an Appointment
+                    </Button>
     )}
   </Box>
 )}
-
-
-            {/* Reviews Tab (Tab 1 for Patients viewing a doctor's profile) */}
-            {tabValue === 1 && (user.role === 'patient' && isPatientViewingDoctor) && (
-                <Box>
-                   {profile.role === 'doctor' && profile.reviews && profile.reviews.length > 0 && (
-                       <Box>
-                           <Typography variant="h5" gutterBottom sx={{fontWeight: 600, mb: 2}}>Reviews ({profile.reviews.length})</Typography>
-                            {profile.reviews.map((review, index) => (
-                              <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: 2, bgcolor: 'background.default' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mr: 1 }}>
-                                    {review.patient?.username || 'Anonymous Patient'}
-                                  </Typography>
-                                </Box>
-                                <Typography variant="body2" color="text.primary" sx={{mb: 1}}>{review.comment}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {new Date(review.createdAt).toLocaleDateString()}
-                                </Typography>
-                              </Box>
-                            ))}
                        </Box>
                    )}
-                    {isPatientViewingDoctor && (
+
+          {/* Availability Tab Content */}
+          {user?.role === 'doctor' && tabValue === 1 && (
                         <Box>
-                            <Typography variant="h5" gutterBottom sx={{fontWeight: 600, mb: 2}}>Leave a Review</Typography>
-                            <form onSubmit={handleReviewSubmit}>
-                                <Grid container spacing={2} alignItems="center">
-                                    <Grid item xs={12}>
+                   <Typography variant="h5" gutterBottom sx={{fontWeight: 600, mb: 2}}>Manage Availability</Typography>
+                   <form onSubmit={handleAddSlot} style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                                         <TextField 
-                                          fullWidth 
-                                          label="Your Review" 
-                                          name="reviewComment" 
-                                          value={reviewComment} 
-                                          onChange={(e) => setReviewComment(e.target.value)} 
-                                          multiline 
-                                          rows={4} 
-                                          variant="outlined" 
+                  label="New Available Time" 
+                  type="datetime-local" 
+                  value={newSlotTime} 
+                  onChange={(e) => setNewSlotTime(e.target.value)} 
+                  InputLabelProps={{ shrink: true }} 
+                  size="small" 
                                           required 
-                                          error={!!reviewFormErrors.reviewComment} 
-                                          helperText={reviewFormErrors.reviewComment} 
+                  sx={{ flexGrow: 1 }} 
+                  inputProps={{ min: new Date().toISOString().slice(0, 16) }} 
                                         />
-                                    </Grid>
-                                    <Grid item xs={12}>
                                          <Button 
                                            type="submit" 
                                            variant="contained" 
                                            color="primary" 
-                                           size="large" 
-                                           sx={{ mt: 1, borderRadius: 3, py: 1, fontWeight: 600 }} 
-                                           disabled={reviewLoading}
+                  disabled={addSlotLoading || !newSlotTime} 
+                  sx={{ fontWeight: 600 }}
                                          >
-                                           {reviewLoading ? <CircularProgress size={24} color="inherit" /> : 'Submit Review'}
+                  {addSlotLoading ? <CircularProgress size={24} color="inherit" /> : 'Add Slot'}
                                          </Button>
-                                    </Grid>
-                                </Grid>
                             </form>
-                        </Box>
+                   <Typography variant="h6" sx={{fontWeight: 600, mb: 1}}>Available Slots:</Typography>
+              {availability && availability.length > 0 ? (
+                       <List>
+                  {availability.map(slot => (
+          <ListItem
+                      key={slot._id} 
+                      secondaryAction={
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                          onClick={() => handleDeleteSlot(slot._id)} 
+                          disabled={deleteSlotLoading[slot._id] || slot.isBooked}
+                        >
+                          {deleteSlotLoading[slot._id] ? <CircularProgress size={16} color="inherit" /> : (slot.isBooked ? 'Booked' : 'Delete')}
+                  </Button>
+                      }
+                    >
+                      <ListItemText 
+                        primary={new Date(slot.time).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })} 
+                        secondary={slot.isBooked ? 'Booked' : 'Available'} 
+                      />
+          </ListItem>
+        ))}
+      </List>
+    ) : (
+                <Typography variant="body2" color="text.secondary">No availability slots added yet.</Typography>
                     )}
                 </Box>
             )}
 
-            {/* My Booked Appointments Tab (Tab 1 for Patients viewing own profile) - Already Handled Above */}
-            {/* We handle the patient's own appointments in the same block as doctor's appointments based on conditional rendering */}
-
-            {/* My Chats Tab (Tab 3 for Doctors) */}
-            {tabValue === 3 && (user.role === 'doctor' && isViewingOwnProfile) && (
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h5" gutterBottom sx={{fontWeight: 600, mb: 2}}>My Chats</Typography>
-                {chatsLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                    <CircularProgress size={24} />
-                    <Typography sx={{ ml: 2 }}>Loading chats...</Typography>
-                  </Box>
-                ) : chats.length > 0 ? (
-                  <List>
-                    {chats.map((chat) => (
-                      <ListItem
-                        key={chat._id}
-                        button
-                        onClick={() => navigate(`/chat/${chat._id}`)}
-                        sx={{
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          mb: 1,
-                          p: 2,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          '&:hover': {
-                            bgcolor: 'action.hover',
-                          },
-                        }}
-                      >
-                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                            Patient: {chat.patient?.profile?.name || chat.patient?.username}
-                          </Typography>
-                          {chat.lastMessage && (
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(chat.lastMessage).toLocaleString()}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          Last Message: {chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].content : 'No messages yet.'}
-                        </Typography>
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Typography variant="body1" color="text.secondary" align="center">
-                    You have no chats yet.
+          {/* My Patients Tab Content */}
+          {user?.role === 'doctor' && tabValue === 3 && (
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                My Patients
                   </Typography>
-                )}
-              </Box>
+                  <List>
+                {chats && chats.length > 0 ? (
+                      chats.map((chat) => (
+                    <ListItem
+                      key={chat._id}
+                      sx={{
+                        mb: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 2,
+                        boxShadow: 1,
+                        '&:hover': {
+                          boxShadow: 3,
+                          transform: 'translateY(-2px)',
+                          transition: 'all 0.2s ease-in-out'
+                        }
+                      }}
+                    >
+                          <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                          {chat.patient?.profile?.name?.[0]?.toUpperCase() || chat.patient?.username?.[0]?.toUpperCase() || 'P'}
+                        </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                        primary={chat.patient?.profile?.name || chat.patient?.username || 'Unknown Patient'}
+                        secondary={`Last message: ${chat.lastMessage ? new Date(chat.lastMessage).toLocaleString() : 'No messages yet'}`}
+                          />
+                          <ListItemSecondaryAction>
+                            <IconButton edge="end" aria-label="chat" onClick={() => navigate(`/chat/${chat._id}`)}>
+                              <ChatIcon />
+                            </IconButton>
+                          </ListItemSecondaryAction>
+                        </ListItem>
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">No chats found.</Typography>
+                    )}
+                  </List>
+                </Box>
             )}
-
-          </Box>
-
-        </Paper>
-      </Container>
 
       {/* Cancel Appointment Dialog */}
       <Dialog
         open={cancelDialogOpen}
-        onClose={() => {
-          setCancelDialogOpen(false);
-          setSelectedAppointment(null);
-        }}
-      >
-        <DialogTitle>Cancel Appointment</DialogTitle>
+            onClose={() => setCancelDialogOpen(false)}
+            aria-labelledby="cancel-dialog-title"
+            aria-describedby="cancel-dialog-description"
+          >
+            <DialogTitle id="cancel-dialog-title">Cancel Appointment</DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to cancel this appointment scheduled for
-            {selectedAppointment && new Date(selectedAppointment.time).toLocaleString()}?
-          </Typography>
+              <DialogContentText id="cancel-dialog-description">
+                Are you sure you want to cancel this appointment? This action cannot be undone.
+              </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => {
-              setCancelDialogOpen(false);
-              setSelectedAppointment(null);
-            }}
+                onClick={() => setCancelDialogOpen(false)}
             disabled={appointmentActionLoading}
           >
             No, Keep It
           </Button>
           <Button
-            onClick={() => selectedAppointment && handleAppointmentAction(selectedAppointment._id, 'cancel')}
+                onClick={handleCancelAppointment} 
             color="error"
             disabled={appointmentActionLoading}
           >
-            Yes, Cancel
+                {appointmentActionLoading ? 'Cancelling...' : 'Yes, Cancel It'}
           </Button>
         </DialogActions>
       </Dialog>
+        </Paper>
+      </Container>
+
+      {/* Add Confirmation Dialog */}
+      <Dialog
+        open={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        TransitionComponent={Zoom}
+      >
+        <DialogTitle>Discard Changes?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You have unsaved changes. Are you sure you want to discard them?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowCancelConfirm(false)} color="primary">
+            Keep Editing
+          </Button>
+          <Button onClick={handleConfirmCancel} color="error" variant="contained">
+            Discard Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Profile Form */}
+        {isEditMode && (
+        <Dialog open={isEditMode} onClose={() => setIsEditMode(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Update Profile</DialogTitle>
+          <DialogContent>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Name"
+                    name="name"
+                    value={formData.name || ''}
+                    onChange={handleChange}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    type="email"
+                    value={formData.email || ''}
+                    onChange={handleChange}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    name="phone"
+                    value={formData.phone || ''}
+                    onChange={handleChange}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Address"
+                    name="address"
+                    value={formData.address || ''}
+                    onChange={handleChange}
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                
+                {user.role === 'doctor' && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <FormControl fullWidth required>
+                        <InputLabel>Specialization</InputLabel>
+                        <Select
+                          name="specialization"
+                          value={formData.specialization || ''}
+                          onChange={handleChange}
+                          label="Specialization"
+                        >
+                          {SPECIALIZATIONS.map((spec) => (
+                            <MenuItem key={spec} value={spec}>
+                              {spec}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Years of Experience"
+                        name="experience"
+                        type="number"
+                        value={formData.experience || ''}
+                        onChange={handleChange}
+                        required
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Consultation Fee ($)"
+                        name="fees"
+                        type="number"
+                        value={formData.fees || ''}
+                        onChange={handleChange}
+                        required
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Education"
+                        name="education"
+                        value={formData.education || ''}
+                        onChange={handleChange}
+                        multiline
+                        rows={2}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth>
+                        <InputLabel>Languages</InputLabel>
+                        <Select
+                          multiple
+                          name="languages"
+                          value={formData.languages || []}
+                          onChange={handleLanguageChange}
+                          input={<OutlinedInput label="Languages" />}
+                          renderValue={(selected) => selected.join(', ')}
+                        >
+                          {['English', 'Spanish', 'French', 'German', 'Chinese', 'Hindi', 'Arabic', 'Russian', 'Japanese', 'Korean'].map((lang) => (
+                            <MenuItem key={lang} value={lang}>
+                              <Checkbox checked={formData.languages?.indexOf(lang) > -1} />
+                              <ListItemText primary={lang} />
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+          </>
+        )}
+              </Grid>
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                <Button onClick={() => setIsEditMode(false)}>Cancel</Button>
+                <Button type="submit" variant="contained" color="primary">
+                  Save Changes
+                </Button>
+      </Box>
+            </Box>
+          </DialogContent>
+        </Dialog>
+      )}
     </Box>
   );
 }
