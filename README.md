@@ -6,15 +6,27 @@ An online platform connecting patients with a wide range of expert doctors for e
 
 * User authentication with JWT
 * Role-based access (Doctor and Patient)
-* Real-time chat functionality
+* **Robust Profile Management:**
+    * Doctors can manage specialization, experience, consultation fees, education, and languages.
+    * Patients and doctors can update their personal and contact information.
+* **Enhanced Appointment System:**
+    * Patients can view and cancel their booked appointments.
+    * Doctors can manage their availability slots.
+* **Improved Chat Functionality:**
+    * Real-time chat (initial setup, ready for Socket.IO integration).
+    * Doctors can view and chat with their patients.
 * Doctor search by specialty
-* Profile management
 * Secure password handling with bcrypt
+
+## UI/UX Status (Ongoing)
+
+* The application is built with React.js and Material-UI, with an ongoing effort to implement a calm, muted, and approachable design using card-based layouts, subtle animations, and clean forms. Initial global theme adjustments have been applied.
 
 ## Tech Stack
 
 **Frontend:**
 - React.js
+- Material-UI
 - CSS
 - Socket.IO Client
 
