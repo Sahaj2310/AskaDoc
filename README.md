@@ -81,6 +81,50 @@ REACT_APP_API_URL=http://localhost:5000
 npm start
 ```
 
+## Deployment
+
+### Frontend Deployment (Vercel)
+
+1. **Install Vercel CLI** (optional):
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Deploy via Vercel Dashboard**:
+   - Go to [vercel.com](https://vercel.com)
+   - Import your GitHub repository
+   - Set **Root Directory** to `client`
+   - Add environment variable: `REACT_APP_API_URL` = your backend URL
+   - Deploy!
+
+3. **Or deploy via CLI**:
+   ```bash
+   cd client
+   vercel
+   ```
+
+### Backend Deployment
+
+Deploy the backend separately to:
+- **Railway**: Recommended for easy deployment
+- **Render**: Free tier available
+- **Heroku**: Traditional option
+
+See `DEPLOYMENT.md` for detailed instructions.
+
+### Environment Variables
+
+**Frontend (Vercel)**:
+- `REACT_APP_API_URL` - Your backend API URL
+
+**Backend (Railway/Render/Heroku)**:
+- `PORT` - Server port (default: 5000)
+- `MONGODB_URI` - MongoDB connection string
+- `JWT_SECRET` - Secret key for JWT tokens
+- `CLIENT_URL` - Your Vercel frontend URL
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+
 ## Author
 
 * Sahaj Modi

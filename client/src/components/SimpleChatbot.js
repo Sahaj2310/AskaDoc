@@ -83,7 +83,7 @@ const SimpleChatbot = () => {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/chatbot/message', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/chatbot/message`, {
         message: userMessage
       });
 
