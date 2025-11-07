@@ -148,7 +148,7 @@ function BookAppointment() {
                 {doctor.profile?.specialization}
               </Typography>
               <Typography variant="body1" color="primary.main" sx={{ fontWeight: 600 }}>
-                Consultation Fee: ${doctor.profile?.fees}
+                Consultation Fee: ₹{doctor.profile?.fees}
               </Typography>
             </Box>
           </Grid>
@@ -231,7 +231,7 @@ function BookAppointment() {
             Date & Time: {selectedSlot && new Date(selectedSlot.time).toLocaleString()}
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Consultation Fee: ${doctor.profile?.fees}
+            Consultation Fee: ₹{doctor.profile?.fees}
           </Typography>
           <Divider sx={{ my: 2 }} />
           <Typography variant="body2" color="text.secondary">

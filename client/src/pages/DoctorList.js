@@ -290,7 +290,7 @@ function DoctorList() {
               onChange={(e) => setFilters({ ...filters, minFees: e.target.value })}
               size="large"
               InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
               }}
             />
           </Grid>
@@ -303,7 +303,7 @@ function DoctorList() {
               onChange={(e) => setFilters({ ...filters, maxFees: e.target.value })}
               size="large"
               InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
               }}
             />
           </Grid>
@@ -362,7 +362,7 @@ function DoctorList() {
                           Experience: {doctor.profile?.experience || 0} years
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Fees: ${doctor.profile?.fees || 0}
+                          Fees: ₹{doctor.profile?.fees || 0}
                         </Typography>
                       </Box>
                     </Box>

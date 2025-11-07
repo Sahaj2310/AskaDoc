@@ -8,6 +8,22 @@ router.post('/register', async (req, res) => {
   try {
     const { username, password, role } = req.body;
 
+    // Validate required fields
+    if (!username || !password || !role) {
+      return res.status(400).json({ message: 'Username, password, and role are required' });
+    }
+
+    // Validate role
+    if (!['doctor', 'patient'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Must be either "doctor" or "patient"' });
+    }
+
+    // Check if JWT_SECRET is configured
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured in environment variables');
+      return res.status(500).json({ message: 'Server configuration error. Please contact administrator.' });
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
@@ -42,7 +58,23 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating user', error: error.message });
+    console.error('Registration error:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: 'Validation error', errors });
+    }
+    
+    // Handle duplicate key error (username already exists)
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    res.status(500).json({ 
+      message: 'Error creating user', 
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' 
+    });
   }
 });
 
@@ -50,6 +82,17 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    // Validate required fields
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    // Check if JWT_SECRET is configured
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured in environment variables');
+      return res.status(500).json({ message: 'Server configuration error. Please contact administrator.' });
+    }
 
     // Find user
     const user = await User.findOne({ username });
@@ -79,7 +122,11 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error logging in', error: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      message: 'Error logging in', 
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' 
+    });
   }
 });
 

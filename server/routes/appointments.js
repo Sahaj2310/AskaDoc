@@ -13,46 +13,63 @@ router.post('/doctors/me/availability', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Doctors only.' });
     }
 
-    const { time } = req.body; // Assuming 'time' is sent as a valid Date string or timestamp
+    const { time } = req.body;
 
     if (!time) {
-        return res.status(400).json({ message: 'Appointment time is required.' });
+      return res.status(400).json({ message: 'Appointment time is required.' });
     }
 
     const doctorId = req.user.userId;
     const doctor = await User.findById(doctorId);
 
     if (!doctor) {
-        return res.status(404).json({ message: 'Doctor not found.' });
+      return res.status(404).json({ message: 'Doctor not found.' });
     }
 
     // Ensure profile.availability exists
     if (!doctor.profile.availability) {
-        doctor.profile.availability = [];
+      doctor.profile.availability = [];
     }
 
     const newSlotTime = new Date(time);
+    
+    // Validate the time is in the future
+    if (newSlotTime <= new Date()) {
+      return res.status(400).json({ message: 'Availability slot must be in the future.' });
+    }
 
-    // Basic check for overlapping slots (can be made more robust)
-    const isOverlap = doctor.profile.availability.some(slot =>
-      slot.time.getTime() === newSlotTime.getTime() // Simple exact time match check
-    );
+    // Basic check for overlapping slots (within 30 minutes)
+    const isOverlap = doctor.profile.availability.some(slot => {
+      const slotTime = new Date(slot.time);
+      const timeDiff = Math.abs(slotTime - newSlotTime);
+      return timeDiff < 30 * 60 * 1000; // 30 minutes in milliseconds
+    });
 
     if (isOverlap) {
-        return res.status(400).json({ message: 'An availability slot already exists at this time.' });
+      return res.status(400).json({ message: 'An availability slot already exists within 30 minutes of this time.' });
     }
 
     // Add the new availability slot
-    doctor.profile.availability.push({ time: newSlotTime, isBooked: false });
+    doctor.profile.availability.push({ 
+      time: newSlotTime, 
+      isBooked: false,
+      createdAt: new Date()
+    });
 
     await doctor.save();
 
-    res.status(201).json({ message: 'Availability slot added successfully', slot: { time: newSlotTime, isBooked: false } });
+    res.status(201).json({ 
+      message: 'Availability slot added successfully', 
+      slot: { 
+        time: newSlotTime, 
+        isBooked: false 
+      } 
+    });
 
   } catch (error) {
     console.error('Error adding availability:', error);
-     if (error.name === 'CastError') { // Handle invalid date format
-        return res.status(400).json({ message: 'Invalid date format provided.' });
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid date format provided.' });
     }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -193,23 +210,83 @@ router.get('/me', auth, async (req, res) => {
         const userId = req.user.userId;
         const userRole = req.user.role;
 
+        console.log(`[Appointments] Fetching appointments for user: ${userId}, role: ${userRole}`);
+
         let query = {};
         if (userRole === 'doctor') {
             query = { doctor: userId };
-        } else {
+        } else if (userRole === 'patient') {
             query = { patient: userId };
+        } else {
+            return res.status(403).json({ message: 'Invalid user role' });
         }
 
-        // Fetch appointments, populate doctor and patient details (selectively)
-        const appointments = await Appointment.find(query)
-            .populate('doctor', 'username profile.name profile.specialization') // Populate doctor info
-            .populate('patient', 'username profile.name') // Populate patient info
-            .sort('time'); // Sort by appointment time
+        console.log(`[Appointments] Query for appointments:`, query);
 
-        res.json(appointments);
+        // Fetch appointments with proper population
+        const appointments = await Appointment.find(query)
+            .populate({
+                path: 'doctor',
+                select: 'username profile.name profile.specialization',
+                model: 'User'
+            })
+            .populate({
+                path: 'patient',
+                select: 'username profile.name',
+                model: 'User'
+            })
+            .sort({ time: -1 }); // Sort by appointment time, most recent first
+
+        console.log(`[Appointments] Found ${appointments.length} appointments for user ${userId}`);
+        
+        if (appointments.length > 0) {
+            console.log(`[Appointments] First appointment data:`, JSON.stringify({
+                id: appointments[0]._id,
+                time: appointments[0].time,
+                status: appointments[0].status,
+                doctor: appointments[0].doctor ? {
+                    id: appointments[0].doctor._id,
+                    name: appointments[0].doctor.profile?.name,
+                    specialization: appointments[0].doctor.profile?.specialization
+                } : null,
+                patient: appointments[0].patient ? {
+                    id: appointments[0].patient._id,
+                    name: appointments[0].patient.profile?.name
+                } : null
+            }, null, 2));
+        }
+
+        // Transform the data to ensure all required fields are present
+        const transformedAppointments = appointments.map(appointment => {
+            const transformed = {
+                _id: appointment._id,
+                time: appointment.time,
+                status: appointment.status,
+                doctor: appointment.doctor ? {
+                    _id: appointment.doctor._id,
+                    username: appointment.doctor.username,
+                    profile: {
+                        name: appointment.doctor.profile?.name || 'Unknown Doctor',
+                        specialization: appointment.doctor.profile?.specialization || 'Not specified'
+                    }
+                } : null,
+                patient: appointment.patient ? {
+                    _id: appointment.patient._id,
+                    username: appointment.patient.username,
+                    profile: {
+                        name: appointment.patient.profile?.name || 'Unknown Patient'
+                    }
+                } : null
+            };
+            console.log(`[Appointments] Transformed appointment:`, JSON.stringify(transformed, null, 2));
+            return transformed;
+        });
+
+        console.log(`[Appointments] Sending ${transformedAppointments.length} transformed appointments`);
+        res.json(transformedAppointments);
 
     } catch (error) {
-        console.error('Error fetching appointments:', error);
+        console.error('[Appointments] Error fetching appointments:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });

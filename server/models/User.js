@@ -1,6 +1,31 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const SPECIALIZATIONS = [
+  'Cardiology',
+  'Dermatology',
+  'Dentistry',
+  'Endocrinology',
+  'ENT',
+  'Family Medicine',
+  'Gastroenterology',
+  'General Medicine',
+  'General Practitioner',
+  'Gynecology',
+  'Internal Medicine',
+  'Nephrology',
+  'Neurology',
+  'Obstetrics and Gynecology',
+  'Oncology',
+  'Ophthalmology',
+  'Orthopedics',
+  'Pediatrics',
+  'Psychiatry',
+  'Pulmonology',
+  'Radiology',
+  'Urology'
+];
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -21,9 +46,16 @@ const userSchema = new mongoose.Schema({
     name: String,
     email: String,
     phone: String,
-    specialization: String,
+    address: String,
+    specialization: {
+      type: String,
+      enum: SPECIALIZATIONS,
+      required: false // Not required during registration, can be added later in profile
+    },
     experience: Number,
     fees: Number,
+    education: String,
+    languages: [String],
     rating: {
       type: Number,
       default: 0
@@ -51,7 +83,51 @@ const userSchema = new mongoose.Schema({
           default: false
         }
       }
-    ]
+    ],
+    medicalHistory: {
+      conditions: [{
+        type: String,
+        trim: true
+      }],
+      allergies: [{
+        type: String,
+        trim: true
+      }],
+      prescriptions: [
+        {
+          name: {
+            type: String,
+            trim: true
+          },
+          dosage: {
+            type: String,
+            trim: true
+          },
+          frequency: {
+            type: String,
+            trim: true
+          },
+          startDate: Date,
+          endDate: Date
+        }
+      ],
+      documents: [
+        {
+          fileName: {
+            type: String,
+            trim: true
+          },
+          fileUrl: {
+            type: String,
+            trim: true
+          },
+          uploadDate: {
+            type: Date,
+            default: Date.now
+          }
+        }
+      ]
+    }
   },
   createdAt: {
     type: Date,
@@ -72,7 +148,6 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare password
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

@@ -451,7 +451,6 @@ Medical Assistant:`;
       }
     }
 
-    // Emergency keywords with severity levels
     const emergencyKeywords = {
       critical: [
         'chest pain',
@@ -541,7 +540,6 @@ Medical Assistant:`;
       ]
     };
 
-    // Check for critical emergencies
     for (const keyword of emergencyKeywords.critical) {
       if (lowerMessage.includes(keyword)) {
         return {
@@ -553,7 +551,6 @@ Medical Assistant:`;
       }
     }
 
-    // Check for urgent situations
     for (const keyword of emergencyKeywords.urgent) {
       if (lowerMessage.includes(keyword)) {
         return {
@@ -565,7 +562,6 @@ Medical Assistant:`;
       }
     }
 
-    // Emergency phrases with severity
     const emergencyPhrases = {
       critical: [
         'emergency',
@@ -598,7 +594,6 @@ Medical Assistant:`;
       ]
     };
 
-    // Medical terms to check with emergency phrases
     const medicalTerms = [
       'fever', 'pain', 'bleeding', 'breathing', 'chest', 'head',
       'neck', 'back', 'abdomen', 'arm', 'leg', 'joint', 'muscle',
@@ -611,7 +606,6 @@ Medical Assistant:`;
       'break', 'dislocation', 'infection', 'inflamed', 'inflammation'
     ];
 
-    // Check for critical emergency phrases with medical terms
     for (const phrase of emergencyPhrases.critical) {
       if (lowerMessage.includes(phrase)) {
         for (const term of medicalTerms) {
@@ -627,7 +621,6 @@ Medical Assistant:`;
       }
     }
 
-    // Check for urgent phrases with medical terms
     for (const phrase of emergencyPhrases.urgent) {
       if (lowerMessage.includes(phrase)) {
         for (const term of medicalTerms) {

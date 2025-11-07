@@ -763,7 +763,7 @@ function Profile() {
                                 margin="normal"
                           />
                           <TextField
-                            label="Consultation Fee ($)"
+                            label="Consultation Fee (₹)"
                             name="fees"
                             type="number"
                             value={formData.fees || ''}
@@ -882,7 +882,7 @@ function Profile() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <AttachMoneyIcon color="action" />
                                     <Typography variant="body1">
-                              <Typography component="span" sx={{ fontWeight: 'bold' }}>Consultation Fee:</Typography> {profile.profile?.fees ? `$${profile.profile.fees}` : 'Not set'}
+                              <Typography component="span" sx={{ fontWeight: 'bold' }}>Consultation Fee:</Typography> {profile.profile?.fees ? `₹${profile.profile.fees}` : 'Not set'}
                                     </Typography>
                                   </Box>
                           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -1257,7 +1257,7 @@ function Profile() {
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
-                        label="Consultation Fee ($)"
+                        label="Consultation Fee (₹)"
                         name="fees"
                         type="number"
                         value={formData.fees || ''}

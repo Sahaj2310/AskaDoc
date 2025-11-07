@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Appointment = require('../models/Appointment');
 const auth = require('../middleware/auth');
 
 // Get user profile
@@ -419,6 +420,31 @@ router.get('/patient/:patientId/medical-history', auth, async (req, res) => {
     }
     console.error('Error fetching patient medical history:', error);
     res.status(500).json({ message: 'Error fetching patient medical history', error: error.message });
+  }
+});
+
+// Get platform statistics
+router.get('/stats', async (req, res) => {
+  try {
+    const doctorCount = await User.countDocuments({ role: 'doctor' });
+    const patientCount = await User.countDocuments({ role: 'patient' });
+    const totalAppointments = await Appointment.countDocuments();
+    const completedAppointments = await Appointment.countDocuments({ status: 'completed' });
+    
+    // Calculate success rate (completed appointments / total appointments * 100)
+    const successRate = totalAppointments > 0 
+      ? Math.round((completedAppointments / totalAppointments) * 100) 
+      : 0;
+
+    res.json({
+      expertDoctors: doctorCount,
+      happyPatients: patientCount,
+      consultations: totalAppointments,
+      successRate: successRate
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ message: 'Error fetching statistics', error: error.message });
   }
 });
 

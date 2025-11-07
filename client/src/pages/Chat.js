@@ -15,9 +15,16 @@ import {
   ListItemText,
   Divider,
   CircularProgress,
-  Alert
+  Alert,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tooltip,
+  Collapse
 } from '@mui/material';
-import { Send as SendIcon } from '@mui/icons-material';
+import { Send as SendIcon, MedicalInformation as MedicalInformationIcon, Close as CloseIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '@mui/material/styles';
 
@@ -32,6 +39,12 @@ function Chat() {
   const socketRef = useRef();
   const messagesEndRef = useRef(null);
   const theme = useTheme();
+
+  // State for patient medical history
+  const [patientMedicalHistory, setPatientMedicalHistory] = useState(null);
+  const [showMedicalHistoryDialog, setShowMedicalHistoryDialog] = useState(false);
+  const [medicalHistoryLoading, setMedicalHistoryLoading] = useState(false);
+  const [medicalHistoryError, setMedicalHistoryError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +83,21 @@ function Chat() {
       console.error('Error fetching chat:', error);
       setError('Could not load chat. Please try again later.');
       setLoading(false);
+    }
+  };
+
+  const fetchPatientMedicalHistory = async (patientId) => {
+    setMedicalHistoryLoading(true);
+    setMedicalHistoryError(null);
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/patient/${patientId}/medical-history`);
+      setPatientMedicalHistory(response.data.medicalHistory);
+      setShowMedicalHistoryDialog(true);
+    } catch (error) {
+      console.error('Error fetching patient medical history:', error);
+      setMedicalHistoryError(error.response?.data?.message || 'Failed to load patient medical history.');
+    } finally {
+      setMedicalHistoryLoading(false);
     }
   };
 
@@ -146,7 +174,7 @@ function Chat() {
           boxShadow: theme.shadows[3]
         }}>
           <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2, width: 48, height: 48 }}>{otherUser.username[0].toUpperCase()}</Avatar>
-          <Box>
+          <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" sx={{ color: theme.palette.primary.contrastText, fontWeight: 600 }}>
               {otherUser.profile?.name || otherUser.username}
             </Typography>
@@ -161,6 +189,27 @@ function Chat() {
               </Typography>
             )}
           </Box>
+          {user.role === 'doctor' && chat.patient && (
+            <Tooltip title="View Patient Medical History">
+              <IconButton 
+                color="inherit" 
+                onClick={() => {
+                  console.log('Medical History button clicked!');
+                  console.log('medicalHistoryLoading state:', medicalHistoryLoading);
+                  console.log('Chat patient object:', chat.patient);
+                  if (chat.patient && chat.patient._id) {
+                    console.log('Attempting to fetch medical history for patient ID:', chat.patient._id);
+                    fetchPatientMedicalHistory(chat.patient._id);
+                  } else {
+                    console.error('Chat patient ID is undefined or null.', chat.patient);
+                  }
+                }}
+                disabled={medicalHistoryLoading}
+              >
+                <MedicalInformationIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
 
         <List sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: 'background.default', scrollBehavior: 'smooth' }}>
@@ -203,7 +252,7 @@ function Chat() {
                       {msg.content}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, textAlign: isCurrentUser ? 'right' : 'left' }}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                     </Typography>
                   </Paper>
                   {isCurrentUser && (
@@ -257,6 +306,122 @@ function Chat() {
           </Box>
         </Box>
       </Paper>
+      {/* Medical History Dialog */}
+      <Dialog
+        open={showMedicalHistoryDialog}
+        onClose={() => setShowMedicalHistoryDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Patient Medical History
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowMedicalHistoryDialog(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {medicalHistoryLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading medical history...</Typography>
+            </Box>
+          ) : medicalHistoryError ? (
+            <Alert severity="error">{medicalHistoryError}</Alert>
+          ) : patientMedicalHistory ? (
+            <Box>
+              <Typography variant="h6" gutterBottom>Conditions</Typography>
+              <List dense>
+                {patientMedicalHistory.conditions && patientMedicalHistory.conditions.length > 0 ? (
+                  patientMedicalHistory.conditions.map((condition, index) => (
+                    <ListItem key={index}><ListItemText primary={condition} /></ListItem>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No conditions recorded.</Typography>
+                )}
+              </List>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" gutterBottom>Allergies</Typography>
+              <List dense>
+                {patientMedicalHistory.allergies && patientMedicalHistory.allergies.length > 0 ? (
+                  patientMedicalHistory.allergies.map((allergy, index) => (
+                    <ListItem key={index}><ListItemText primary={allergy} /></ListItem>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No allergies recorded.</Typography>
+                )}
+              </List>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" gutterBottom>Prescriptions</Typography>
+              <List dense>
+                {patientMedicalHistory.prescriptions && patientMedicalHistory.prescriptions.length > 0 ? (
+                  patientMedicalHistory.prescriptions.map((prescription, index) => (
+                    <ListItem key={index}>
+                      <ListItemText
+                        primary={prescription.name}
+                        secondary={
+                          <>
+                            <Typography component="span" variant="body2" color="text.primary">
+                              Dosage: {prescription.dosage}, Frequency: {prescription.frequency}
+                            </Typography>
+                            <br />
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              Start: {prescription.startDate ? new Date(prescription.startDate).toLocaleDateString() : 'N/A'} | End: {prescription.endDate ? new Date(prescription.endDate).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No prescriptions recorded.</Typography>
+                )}
+              </List>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" gutterBottom>Documents</Typography>
+              <List dense>
+                {patientMedicalHistory.documents && patientMedicalHistory.documents.length > 0 ? (
+                  patientMedicalHistory.documents.map((doc, index) => (
+                    <ListItem key={index}>
+                      <ListItemText
+                        primary={doc.fileName}
+                        secondary={
+                          <Typography component="span" variant="body2" color="text.secondary">
+                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">View Document</a> | Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No documents recorded.</Typography>
+                )}
+              </List>
+            </Box>
+          ) : (
+            <Typography variant="body1" color="text.secondary">No medical history available for this patient.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowMedicalHistoryDialog(false)} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
