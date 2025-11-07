@@ -29,11 +29,11 @@ import { motion } from 'framer-motion';
 
 // Static data for featured doctors
 const featuredDoctors = [
-  { id: 1, name: 'Dr. Norrie Tullus', specialization: 'Endocrinology', image: '/illustrations/doctor1.svg', rating: 4.8 },
-  { id: 2, name: 'Dr. Tommie Ethelind', specialization: 'Oncology', image: '/illustrations/doctor2.svg', rating: 4.9 },
-  { id: 3, name: 'Dr. Nariko Dupin', specialization: 'Pediatrics', image: '/illustrations/doctor3.svg', rating: 4.7 },
-  { id: 4, name: 'Dr. Mandy Duester', specialization: 'Psychiatry', image: '/illustrations/doctor4.svg', rating: 4.6 },
-  { id: 5, name: 'Dr. Amil Kerry', specialization: 'Radiology', image: '/illustrations/doctor5.svg', rating: 4.8 },
+  { id: 1, name: 'Dr. Rajesh Kumar', specialization: 'Endocrinology', image: '/illustrations/doctor1.svg', rating: 4.8 },
+  { id: 2, name: 'Dr. Priya Sharma', specialization: 'Oncology', image: '/illustrations/doctor2.svg', rating: 4.9 },
+  { id: 3, name: 'Dr. Amit Patel', specialization: 'Pediatrics', image: '/illustrations/doctor3.svg', rating: 4.7 },
+  { id: 4, name: 'Dr. Anjali Singh', specialization: 'Psychiatry', image: '/illustrations/doctor4.svg', rating: 4.6 },
+  { id: 5, name: 'Dr. Vikram Reddy', specialization: 'Radiology', image: '/illustrations/doctor5.svg', rating: 4.8 },
 ];
 
 // Static stats data
@@ -281,8 +281,6 @@ function Home() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                component={RouterLink}
-                to="/doctors"
                 sx={{
                   textAlign: 'center',
                   p: 3,
@@ -291,8 +289,6 @@ function Home() {
                   boxShadow: 2,
                   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                   transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  textDecoration: 'none',
                   '&:hover': {
                     transform: 'translateY(-8px) scale(1.02)',
                     boxShadow: 8,
